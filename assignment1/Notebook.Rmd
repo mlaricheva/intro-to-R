@@ -1,0 +1,144 @@
+---
+title: "Programming Assigment 1 "
+output: html_notebook
+---
+
+The folder contains 332 comma-separated-value (CSV) files containing pollution monitoring data for fine particulate matter (PM) air pollution at 332 locations in the United States. Each file contains data from a single monitor and the ID number for each monitor is contained in the file name. For example, data for monitor 200 is contained in the file "200.csv". Each file contains three variables:
+
+Date: the date of the observation in YYYY-MM-DD format (year-month-day)
+sulfate: the level of sulfate PM in the air on that date (measured in micrograms per cubic meter)
+nitrate: the level of nitrate PM in the air on that date (measured in micrograms per cubic meter)  
+
+*Taking a peek look at the data*
+```{r}
+sample_csv <- read.table("./specdata/002.csv", header=TRUE,sep=",")
+sample_csv
+```
+*A lot of NA values due to the data specificities*  
+
+## Part 1
+
+**Task 1:**  
+Write a function named 'pollutantmean' that calculates the mean of a pollutant (sulfate or nitrate) across a specified list of monitors. The function 'pollutantmean' takes three arguments: 'directory', 'pollutant', and 'id'. Given a vector monitor ID numbers, 'pollutantmean' reads that monitors' particulate matter data from the directory specified in the 'directory' argument and returns the mean of the pollutant across all of the monitors, ignoring any missing values coded as NA. A prototype of the function is as follows
+
+A little bit of testing  
+```{r}
+file_names <- dir("./specdata",full.names = TRUE) # getting the list of files
+tables <- lapply(file_names,read.csv) # creating a dataframe
+df <- do.call(rbind, tables)
+ids_df <- subset(df, ID %in% c(1,2) & (!is.na(df$sulfate)), select = c("sulfate", "ID")) 
+mean(ids_df[["sulfate"]])
+```
+Creating function:   
+```{r}
+pollutantmean <- function(directory, pollutant, id = 1:332){
+  ## 'directory' specifies the location of csv files
+  ## 'pollutant' is character vector, either "sulfate" or "nitrate"
+  ## 'id' is an integer vector of all ids to be used
+  
+  # function returns means of pollutant across all listed monitors (ignoring the NAs)
+  
+  file_names <- dir(paste("./",directory, sep=''),full.names = TRUE) # getting the list of files
+  tables <- lapply(file_names,read.csv) # creating a list of tables
+  df <- do.call(rbind, tables) # combining tables into one df
+  
+  ids_df <- subset(df, (ID %in% id) & (!is.na(df[[pollutant]])), select = c(pollutant, "ID"))  #select subset with chosen ids and pollutant values
+  mean(ids_df[[pollutant]])
+}
+```
+
+```{r}
+pollutantmean("specdata", "nitrate", 23)
+pollutantmean("specdata", "nitrate", 70:72)
+pollutantmean("specdata", "sulfate", 1:10)
+```
+The function seems to work well!  
+We can also save it to the file and then download it like this:  
+```{r}
+source("pollutantmean.R")
+pollutantmean("specdata", "sulfate", 1:10)
+```
+
+## Part 2
+
+**Task 2:**  Write a function that reads a directory full of files and reports the number of completely observed cases in each data file. The function should return a data frame where the first column is the name of the file and the second column is the number of complete cases.  
+
+*For convinience, we'll make a new function called read_data to load all tables into one dataframe*
+```{r}
+read_data<-function(directory){
+  file_names <- dir(paste("./",directory, sep=''),full.names = TRUE) # getting the list of files
+  tables <- lapply(file_names,read.csv) # creating a list of tables
+  df <- do.call(rbind, tables) # combining tables into one df
+  df
+}
+```
+
+```{r}
+complete <- function(directory, id = 1:332){
+  ## 'directory' specifies the location of csv files
+  ## 'id' is an integer vector of all ids to be used
+  
+  # function returns the dataframe of the following structure: 
+  ## id nobs
+  ## 1 117
+  ## 2 1041
+  
+  ## where nobs -- the number of totally observed cases
+  
+  source("read_data.R")
+  df <- read_data("specdata") ## reading data
+  
+  result = NULL # variable for a future dataframe with results
+  
+  for (i in id){
+    ids_df <- subset(df, (ID == i) & (!is.na(df[["nitrate"]])) & (!is.na(df[["sulfate"]])), select = c("ID", "sulfate"))  #select subset with no na's
+    nobs<-nrow(ids_df) # getting the length of subset df
+    result <- rbind(result,data.frame(i, nobs)) # saving results
+  }
+  result
+}
+```
+
+
+```{r}
+complete("specdata", 1)
+complete("specdata", c(2, 4, 8, 10, 12))
+complete("specdata", 30:25)
+complete("specdata", 3)
+```
+All working right!  
+
+## Part 3
+
+**Task 3:** Write a function that takes a directory of data files and a threshold for complete cases and calculates the correlation between sulfate and nitrate for monitor locations where the number of completely observed cases (on all variables) is greater than the threshold. The function should return a vector of correlations for the monitors that meet the threshold requirement. If no monitors meet the threshold requirement, then the function should return a numeric vector of length 0. 
+
+```{r}
+corr <- function(directory, threshold=0){
+  ## 'directory' specifies the location of csv files
+  ## 'threshold' numeric value
+  
+  # function returns the list of correlations for ids that have nobs higher that threshold
+  file_names <- dir(paste("./",directory, sep=''),full.names = TRUE) # getting the list of files
+  tables <- lapply(file_names,read.csv) # creating a list of tables
+  
+  source("complete.R")
+  nobs_df <- complete("specdata") ## getting the number of nods
+  ids <- subset(nobs_df, nobs>threshold, select="i") ## selecting the ids for which nobs is higher than a threshold
+  results <- vector("list", nrow(ids)) # empty vector for future results
+  for (i in 1:nrow(ids)){
+    temp<-data.frame(tables[ids[i,]]) #saving the corresponding table
+    results[i]<-cor(temp$sulfate, temp$nitrate, use="complete.obs")
+  }
+  results
+  
+}
+
+
+```
+
+
+```{r}
+cr<-corr("specdata", 400)
+head(cr)
+```
+
