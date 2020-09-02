@@ -1,0 +1,152 @@
+---
+title: "Programming Assigment 2"
+output: html_notebook 
+---
+
+For the second assignment, we need to create 'cache'-functions, so it would be easier and faster to work with large objects.  
+  
+  In a sense, we will redefine the vector and matrix object and the calculation of their mean (for vector) and invetse (for matrix).
+
+*The following code is given:*
+```{r}
+
+## makeVector function sets and gets the values of the vector itself and its mean
+makeVector <- function(x = numeric()) {
+  ## x is the vector object 
+  
+  m <- NULL # mean 
+  set <- function(y) {
+    x <<- y
+    m <<- NULL
+  }
+  get <- function() x
+  setmean <- function(mean) m <<- mean
+  getmean <- function() m
+  list(set = set, get = get, # the returned values
+       setmean = setmean,
+       getmean = getmean)
+}
+```
+  
+```{r}
+
+## cachemean function checks is 'm' (mean) is empty, and if so, calculates the mean of the vector and saves it to 'm'
+cachemean <- function(x, ...) {
+        m <- x$getmean()
+        if(!is.null(m)) {
+                message("getting cached data")
+                return(m)
+        } # checking if m is null and returning the value
+        data <- x$get()
+        m <- mean(data, ...)
+        x$setmean(m) # else calculating and saving the value
+        m
+}
+```
+
+## Task  
+The assignment is to create a makeCacheMatrix and cacheSolve functions. For this assignment, we assume that the matrix supplied is always invertible.    
+  
+By analogy with 'vector'-function we'll make an matrix object named 'i' to store inverse result
+
+```{r}
+## makeVector function sets and gets the values of the matrix itself and its inverse
+makeCacheMatrix <- function(x = matrix()) {
+  
+  i <- NULL # first, we set inverse to NULL
+  set <- function(y){ # set function is identical to vector's one
+    x <<- y 
+    i <<- NULL 
+  }
+  get <- function() x # also similar -- just returning the value
+  setinverse <- function(solve) i <<- solve # setting the inverse  
+  getinverse <- function() i
+  list(set = set, get = get, # the returned values
+       setinverse = setinverse,
+       getinverse = getinverse)
+}
+```
+  
+Now, we create a cache-Solve function, so we could check is the inverse matrix was calculated and saved previously. If it was not, then we calculate the value and place it into 'i' object  
+
+```{r}
+## cacheSolve returns a matrix that is the inverse of 'x'
+cacheSolve <- function(x) {
+  i <- x$getinverse() # calling the get function, created previously
+  if(!is.null(i)) {
+                message("getting cached data")
+                return(i)
+        } # checking if i is null and returning the value
+  
+  # if cache is empty
+  data <- x$get() # getting the data
+  i <- solve(data) # calculating the inverse
+  x$setinverse(i) # saving inverse in a 'cache' for x object
+  i
+  
+}
+```
+
+A little bit of testing:  
+
+```{r}
+v <- makeVector(c(1,2,3,4))
+v2 <- makeVector()
+v$get()
+v2$get() # v2 should be empty
+
+v2$set(c(6,7,8,9))
+v2$get() # now it's not empty anymore
+
+v$getmean()
+v2$getmean() # none of the vectors have calculated mean
+
+v$setmean(2.5) # we can set mean manually
+v$getmean()
+cachemean(v2) # or, by using the cachemean function
+```
+ Let's look at the larger vectors
+ 
+```{r}
+largev <- makeVector(1:100000)
+# we'll measure what time it takes to initially set up the mean value and to get it from cache
+start_time <- Sys.time()
+cachemean(largev)
+after_cache_time <- Sys.time()
+cachemean(largev)
+after_getting_cache_time <- Sys.time()
+print(after_cache_time-start_time)
+print(after_getting_cache_time-after_cache_time)
+```
+It's three times longer to initially calculate the mean of largev than to get it from cache!  
+Now, vectors testing:
+```{r}
+m <- makeCacheMatrix(diag(3))
+m2 <- makeCacheMatrix()
+m2$set(matrix(5:8,nrow=2))
+m$get()
+m2$get()
+
+m$getinverse()
+m2$getinverse() # none of the matrices have calculated inverse
+
+cacheSolve(m) 
+cacheSolve(m2) # we'll calculate them using our function
+
+```
+Now, to larger matrices (results are supressed by invisible() function):
+
+```{r}
+largem <- makeCacheMatrix(matrix(1:10000,nrow=100)+diag(100))
+largem$getinverse()
+start_time <- Sys.time()
+invisible(cacheSolve(largem))
+after_cache_time <- Sys.time()
+invisible(cacheSolve(largem))
+after_getting_cache_time <- Sys.time()
+print(after_cache_time-start_time)
+print(after_getting_cache_time-after_cache_time)
+```
+
+We can see that it's still a little faster to get value from the cache than to calculate it initially
+
