@@ -1,0 +1,159 @@
+---
+title: "Assignment 3"
+output: html_notebook
+---
+The data for this assignment come from the Hospital Compare web site (http://hospitalcompare.hhs.gov) run by the U.S. Department of Health and Human Services. The purpose of the web site is to provide data and information about the quality of care at over 4,000 Medicare-certified hospitals in the U.S. This dataset es- sentially covers all major U.S. hospitals. This dataset is used for a variety of purposes, including determining whether hospitals should be fined for not providing high quality care to patients (see http://goo.gl/jAXFX for some background on this particular topic).
+
+## Task 1
+**Plot the 30-day mortality rates for heart attack**
+
+Taking a look at the data:
+```{r}
+outcome <- read.csv("outcome-of-care-measures.csv", colClasses = "character")
+head(outcome)
+```
+```{r}
+str(outcome,vec.len=1)
+```
+Creating a histogram:
+```{r}
+outcome[, 11] <- as.numeric(outcome[, 11])
+hist(outcome[, 11],main = "30 day mortality rates for heart attack",xlab="Mortality rate")
+```
+## Task 2
+**Finding the best hospital in a state**  
+Write a function called *best* that take two arguments: the 2-character abbreviated name of a state and an
+outcome name. The function reads the outcome-of-care-measures.csv file and returns a character vector
+with the name of the hospital that has the best (i.e. lowest) 30-day mortality for the specified outcome
+in that state. The hospital name is the name provided in the Hospital.Name variable. The outcomes can
+be one of “heart attack”, “heart failure”, or “pneumonia”. Hospitals that do not have data on a particular
+outcome should be excluded from the set of hospitals when deciding the rankings.    
+*Handling ties.* If there is a tie for the best hospital for a given outcome, then the hospital names should
+be sorted in alphabetical order and the first hospital in that set should be chosen (i.e. if hospitals “b”, “c”,
+and “f” are tied for best, then hospital “b” should be returned).  
+The function should check the validity of its arguments. If an invalid state value is passed to best, the function should throw an error via the stop function with the exact message “invalid state”. If an invalid outcome value is passed to best, the function should throw an error via the stop function with the exact message “invalid outcome”.  
+
+```{r}
+## best function returns the first hospital (by alphabetical order) with the lowest mortality rate in a chosen outcome and located in a chosen state 
+best<- function(state,outcome_name){
+  # ''state'' -- the 2-character abbreviated name of a state
+  # ''outcome'' -- one of the following ("heart attack", "heart failure", "pneumonia")
+
+  outcome <- read.csv("outcome-of-care-measures.csv", colClasses = "character")
+  # First, we define the list of possible states and outcomes. For outcomes, it's also necessary to define the corresponding column names (as there are only 3 possible outcomes, it's faster than reformatting the string)
+  
+  states_list <- unique(outcome[,7]) 
+  outcomes_list <- c("heart attack", "heart failure", "pneumonia")
+  outcomes_columns <- c("Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack","Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure","Hospital.30.Day.Death..Mortality..Rates.from.Pneumonia")
+  outcome_col <- NULL
+  
+  # Validating the entered values
+  if(!state %in% states_list){
+    stop("invalid state")
+  } 
+   if(!outcome_name %in% outcomes_list){
+    stop("invalid outcome")
+   } else {
+     # Finding a corresponding column for chosen outcome
+    for(j in 1:length(outcomes_list)){
+      if(outcome_name==outcomes_list[j]) {outcome_col<-outcomes_columns[j]}
+    }
+  }
+  
+  state_outcome <- subset(outcome,outcome$State==state) # selecting only the hospitals located in the chosen state
+  state_outcome[, outcome_col] <- suppressWarnings(as.numeric(state_outcome[, outcome_col])) # changing values to numeric
+  
+  # To deal with ties, we will preliminary sort the data frame by alphabetical order and only then find the best score
+  outcome_sorted <- state_outcome[order(state_outcome$Hospital.Name),]
+  # Initializing the best score and best name variables
+  best_num <- outcome_sorted[[outcome_col]][[1]]
+  best_name <- outcome_sorted$Hospital.Name[[1]]
+  # Searching for better score in sorted data frame
+  for(i in 1:nrow(outcome_sorted)){
+    if(!is.na(outcome_sorted[[outcome_col]][[i]]) & (outcome_sorted[[outcome_col]][[i]] < best_num) ){
+      best_num<-outcome_sorted[[outcome_col]][[i]]
+      best_name<-outcome_sorted$Hospital.Name[[i]]
+    }
+  }
+  best_name # returning the result
+}
+```
+
+Let's do some testing:  
+
+```{r}
+best("TX", "heart attack")
+best("TX", "heart failure")
+best("MD", "heart attack")
+best("MD", "pneumonia")
+```
+And also, test on invalid entries:  
+```{r}
+best("BB", "heart attack")
+```
+```{r}
+best("NY", "hert attack")
+```
+*The function alone can be found in best.R*  
+  
+## Task 3    
+**Ranking hospitals by outcome in a state**    
+Write a function called *rankhospital* that takes three arguments: the 2-character abbreviated name of a state (state), an outcome (outcome), and the ranking of a hospital in that state for that outcome (num). The function reads the outcome-of-care-measures.csv file and returns a character vector with the name of the hospital that has the ranking specified by the num argument.   
+The num argument can take values “best”, “worst”, or an integer indicating the ranking (smaller numbers are better). If the number given by num is larger than the number of hospitals in that state, then the function should return NA. Hospitals that do not have data on a particular outcome should be excluded from the set of hospitals when deciding the rankings.  
+*Handling ties*. It may occur that multiple hospitals have the same 30-day mortality rate for a given cause of death. In those cases ties should be broken by using the hospital name. For example, in Texas (“TX”), the hospitals with lowest 30-day mortality rate for heart failure are shown here. 
+
+```{r}
+rankhospital <- function(state, outcome_name, num = "best") {
+  
+  # Reading data and checking the entries (similiar to ''best'' function)
+  outcome <- read.csv("outcome-of-care-measures.csv", colClasses = "character")
+  states_list <- unique(outcome[,7]) 
+  outcomes_list <- c("heart attack", "heart failure", "pneumonia")
+  outcomes_columns <- c("Hospital.30.Day.Death..Mortality..Rates.from.Heart.Attack","Hospital.30.Day.Death..Mortality..Rates.from.Heart.Failure","Hospital.30.Day.Death..Mortality..Rates.from.Pneumonia")
+  outcome_col <- NULL
+  if(!state %in% states_list){
+    stop("invalid state")
+  } 
+   if(!outcome_name %in% outcomes_list){
+    stop("invalid outcome")
+   } else {
+    for(j in 1:length(outcomes_list)){
+      if(outcome_name==outcomes_list[j]) {outcome_col<-outcomes_columns[j]}
+    }
+   }
+  
+  state_outcome <- subset(outcome,outcome$State==state,select=c("State","Hospital.Name",outcome_col)) # selecting only the hospitals located in the chosen state
+  state_outcome[, outcome_col] <- suppressWarnings(as.numeric(state_outcome[, outcome_col])) # changing values to numeric
+  # Sort values and drop NAs
+  outcome_sorted <- state_outcome[order(state_outcome[[outcome_col]],state_outcome[["Hospital.Name"]],na.last = NA),]
+  
+  # Converting character input to numbers
+  if(! class(num)=='numeric'){
+    if(num == "best") {
+      num <- as.numeric(1)
+    } else if (num == "worst"){
+       num <- as.numeric(nrow(outcome_sorted))
+    } else{
+      stop("invalid number")
+    }
+  }
+  
+  # In case, if num > the number of rows, return NA
+  if(num>nrow(outcome_sorted)){
+    return(NA)
+  }
+  
+  outcome_sorted[num,"Hospital.Name"]
+}
+```
+
+Testing the code:  
+
+```{r}
+rankhospital("TX", "heart failure", 4)
+rankhospital("MD", "heart attack", "worst")
+rankhospital("MN", "heart attack", 5000)
+```
+All good! 
+
+
