@@ -1,6 +1,8 @@
 ---
-title: "Programming Assigment 1 "
-output: html_notebook
+title: 'Programming Assigment 1 '
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 The folder contains 332 comma-separated-value (CSV) files containing pollution monitoring data for fine particulate matter (PM) air pollution at 332 locations in the United States. Each file contains data from a single monitor and the ID number for each monitor is contained in the file name. For example, data for monitor 200 is contained in the file "200.csv". Each file contains three variables:
@@ -12,7 +14,7 @@ nitrate: the level of nitrate PM in the air on that date (measured in micrograms
 *Taking a peek look at the data*
 ```{r}
 sample_csv <- read.table("./specdata/002.csv", header=TRUE,sep=",")
-sample_csv
+head(sample_csv)
 ```
 *A lot of NA values due to the data specificities*  
 

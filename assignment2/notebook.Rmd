@@ -1,6 +1,8 @@
 ---
 title: "Programming Assigment 2"
-output: html_notebook 
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
 For the second assignment, we need to create 'cache'-functions, so it would be easier and faster to work with large objects.  
