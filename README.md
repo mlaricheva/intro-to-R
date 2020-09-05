@@ -1,6 +1,8 @@
 # intro-to-R
  Here I collected some program assignments from R course on Coursera (R Programming by John Hopkins University).  
+   
  I used R Notebooks mostly and knitted them to nice pdfs, all of which you can find in the coressponding assignment's folder.  
+   
  The programming assignments were not very complex, but they provided a brief overview of the in-build R functions for data analysis and proccessing.  
    
    To give you a little understanding on what assignments were all about:
